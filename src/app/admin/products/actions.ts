@@ -44,3 +44,20 @@ export async function saveProduct(input: {
   revalidatePath("/checkout");
   return { ok: true };
 }
+
+export async function deleteProduct(id: string): Promise<{ ok: boolean; message?: string }> {
+  await requireRole(["admin", "superadmin"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_product", {
+    p_token: await getToken(),
+    p_product_id: id,
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/restock");
+  revalidatePath("/checkout");
+  return { ok: true };
+}

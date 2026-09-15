@@ -9,6 +9,7 @@ import {
   Plus,
   Refrigerator,
   Search,
+  Trash2,
   Warehouse,
   X,
 } from "lucide-react";
@@ -28,7 +29,7 @@ import {
 import { CATEGORIES, CATEGORY_KEYS, categoryOf } from "@/lib/categories";
 import { formatRupiah } from "@/lib/format";
 import type { AdminProduct } from "@/lib/types";
-import { saveProduct } from "./actions";
+import { deleteProduct, saveProduct } from "./actions";
 
 const BULK_UNITS = ["dus", "karton", "krat", "galon", "pack", "sak"];
 const RETAIL_UNITS = ["botol", "kaleng", "cup", "galon", "pcs", "sachet"];
@@ -182,8 +183,28 @@ function ProductSheet({
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const margin = Number(price || 0) - Number(cost || 0);
+
+  async function handleDelete() {
+    if (!product) return;
+    setError(null);
+    setDeleting(true);
+
+    const result = await deleteProduct(product.id);
+
+    setDeleting(false);
+
+    if (!result.ok) {
+      setError(result.message ?? "Gagal menghapus.");
+      setConfirmDelete(false);
+      return;
+    }
+
+    onSuccess(`${product.name} dihapus.`);
+  }
 
   async function handleSubmit() {
     setError(null);
@@ -372,6 +393,37 @@ function ProductSheet({
         <Button size="lg" block disabled={pending || !name.trim()} onClick={handleSubmit}>
           {pending ? <Loader2 size={18} className="animate-spin" /> : "Simpan Produk"}
         </Button>
+
+        {product && (
+          <div className="border-t border-line pt-4">
+            {confirmDelete ? (
+              <div className="flex flex-col gap-2.5">
+                <p className="text-center text-[13px] text-ink-soft">
+                  Yakin hapus <b>{product.name}</b> permanen? Kalau produk ini sudah pernah
+                  dipakai (transaksi/mutasi/nota), sistem akan menolak dan sarankan nonaktifkan
+                  saja.
+                </p>
+                <div className="flex gap-2.5">
+                  <Button variant="outline" size="sm" block onClick={() => setConfirmDelete(false)}>
+                    Batal
+                  </Button>
+                  <Button variant="danger" size="sm" block disabled={deleting} onClick={handleDelete}>
+                    {deleting ? <Loader2 size={15} className="animate-spin" /> : "Ya, Hapus"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-semibold text-danger transition hover:bg-danger-soft"
+              >
+                <Trash2 size={15} />
+                Hapus Produk
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </Sheet>
   );
