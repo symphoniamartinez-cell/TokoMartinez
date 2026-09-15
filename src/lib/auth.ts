@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { SessionUser } from "@/lib/types";
 
 export const SESSION_COOKIE = "tm_session";
-const MAX_AGE = 60 * 60 * 12;
+// Sesi di database tidak pernah kedaluwarsa ('infinity'). Cookie-nya sendiri kita
+// set sepanjang mungkin (400 hari) -- itu batas maksimum yang masih dihormati
+// browser modern (Chrome dkk memotong Max-Age lebih dari itu secara diam-diam),
+// jadi ini pendekatan paling awet yang bisa dicapai lewat cookie biasa.
+const MAX_AGE = 60 * 60 * 24 * 400;
 
 export async function getToken(): Promise<string> {
   return (await cookies()).get(SESSION_COOKIE)?.value ?? "";

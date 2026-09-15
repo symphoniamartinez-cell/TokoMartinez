@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { MartinezMark } from "@/components/brand";
 import LoginForm from "./login-form";
@@ -26,14 +24,6 @@ export default async function LoginPage() {
         <div className="rounded-3xl border border-line bg-surface p-6 shadow-sm">
           <LoginForm />
         </div>
-
-        <Link
-          href="/checkout"
-          className="mt-6 flex items-center justify-center gap-1.5 text-[13px] font-semibold text-ink-soft transition hover:text-coral"
-        >
-          Saya warga, mau belanja
-          <ArrowRight size={15} />
-        </Link>
       </div>
     </div>
   );

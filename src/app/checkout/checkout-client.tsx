@@ -4,19 +4,19 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  BadgeCheck,
   Banknote,
   CheckCircle2,
+  LayoutDashboard,
   Loader2,
   Lock,
+  LogOut,
   Minus,
   NotebookPen,
   Plus,
   QrCode,
-  Search,
-  ShieldCheck,
   ShoppingBasket,
   Snowflake,
+  UserRound,
   Wallet,
   X,
 } from "lucide-react";
@@ -26,7 +26,6 @@ import {
   Badge,
   Button,
   EmptyState,
-  Input,
   Numpad,
   Sheet,
   Stepper,
@@ -35,11 +34,21 @@ import {
 import { CATEGORIES, CATEGORY_KEYS, categoryOf } from "@/lib/categories";
 import { formatRupiah } from "@/lib/format";
 import type { CustomerOption, PaymentMethod, ProductWithStock } from "@/lib/types";
+import { logoutAction } from "@/app/admin/actions";
 import { authorizePayment, submitCheckout } from "./actions";
+import CustomerStep from "./customer-step";
 
-type Props = { products: ProductWithStock[]; customers: CustomerOption[] };
+type Props = {
+  products: ProductWithStock[];
+  customers: CustomerOption[];
+  staffName: string;
+};
 
-export default function CheckoutClient({ products, customers }: Props) {
+type Buyer = CustomerOption | "guest";
+
+export default function CheckoutClient({ products, customers: initialCustomers, staffName }: Props) {
+  const [customers, setCustomers] = useState(initialCustomers);
+  const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<string>("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -69,6 +78,12 @@ export default function CheckoutClient({ products, customers }: Props) {
   const setQty = (id: string, qty: number, max: number) =>
     setCart((prev) => ({ ...prev, [id]: Math.max(0, Math.min(qty, max)) }));
 
+  function resetForNextCustomer() {
+    setCart({});
+    setBuyer(null);
+    setSheetOpen(false);
+  }
+
   return (
     <div className="flex flex-1 flex-col pb-32">
       <header className="petal-bg sticky top-0 z-20 border-b border-line bg-cream/95 backdrop-blur">
@@ -77,19 +92,47 @@ export default function CheckoutClient({ products, customers }: Props) {
             <MartinezMark className="h-10 w-10" />
             <div className="leading-tight">
               <h1 className="font-display text-[17px] font-semibold text-ink">Toko Martinez</h1>
-              <p className="text-[12px] text-ink-soft">Ambil minumannya, catat sendiri di sini</p>
+              <p className="text-[12px] text-ink-soft">Kasir · {staffName}</p>
             </div>
           </div>
-          <Link
-            href="/login"
-            title="Masuk sebagai petugas"
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-ink-faint transition hover:bg-surface hover:text-coral"
-          >
-            <ShieldCheck size={19} />
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/admin"
+              title="Dashboard"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-ink-faint transition hover:bg-surface hover:text-coral"
+            >
+              <LayoutDashboard size={19} />
+            </Link>
+            <button
+              type="button"
+              title="Keluar"
+              onClick={() => void logoutAction()}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-ink-faint transition hover:bg-surface hover:text-coral"
+            >
+              <LogOut size={19} />
+            </button>
+          </div>
         </div>
 
-        {usedCategories.length > 1 && (
+        {buyer && (
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-4 pb-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-coral-soft text-[11px] font-bold text-coral-dark">
+              {buyer === "guest" ? <UserRound size={13} /> : buyer.full_name.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-[13px] font-semibold text-ink">
+              {buyer === "guest" ? "Tamu / Umum" : buyer.full_name}
+            </span>
+            <button
+              type="button"
+              onClick={resetForNextCustomer}
+              className="ml-auto text-[12px] font-semibold text-coral hover:underline"
+            >
+              Ganti
+            </button>
+          </div>
+        )}
+
+        {buyer && usedCategories.length > 1 && (
           <div className="no-scrollbar mx-auto flex w-full max-w-5xl gap-2 overflow-x-auto px-4 pb-3">
             <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
               Semua
@@ -107,28 +150,40 @@ export default function CheckoutClient({ products, customers }: Props) {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">
-        {visible.length === 0 ? (
-          <EmptyState
-            icon={<ShoppingBasket size={34} />}
-            title="Belum ada produk"
-            description="Produk pada kategori ini belum tersedia."
-          />
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {visible.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                qty={cart[product.id] ?? 0}
-                onChange={(n) => setQty(product.id, n, product.inventory?.showcase_stock ?? 0)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      {!buyer ? (
+        <CustomerStep
+          customers={customers}
+          onPick={setBuyer}
+          onGuest={() => setBuyer("guest")}
+          onCreated={(c) => {
+            setCustomers((prev) => [...prev, c].sort((a, b) => a.full_name.localeCompare(b.full_name)));
+            setBuyer(c);
+          }}
+        />
+      ) : (
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={<ShoppingBasket size={34} />}
+              title="Belum ada produk"
+              description="Produk pada kategori ini belum tersedia."
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {visible.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  qty={cart[product.id] ?? 0}
+                  onChange={(n) => setQty(product.id, n, product.inventory?.showcase_stock ?? 0)}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      )}
 
-      {count > 0 && (
+      {buyer && count > 0 && (
         <div
           className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
@@ -148,16 +203,13 @@ export default function CheckoutClient({ products, customers }: Props) {
         </div>
       )}
 
-      {sheetOpen && (
+      {sheetOpen && buyer && (
         <PaymentSheet
+          buyer={buyer}
           items={cartItems}
           total={total}
-          customers={customers}
           onClose={() => setSheetOpen(false)}
-          onDone={() => {
-            setCart({});
-            setSheetOpen(false);
-          }}
+          onDone={resetForNextCustomer}
         />
       )}
     </div>
@@ -252,26 +304,25 @@ function ProductCard({
 
 /* ------------------------------ Payment sheet ------------------------------ */
 
-type Step = "method" | "qris" | "pick" | "pin" | "confirm" | "done";
+type Step = "method" | "pin" | "confirm" | "done";
 type Balance = { deposit: number; debt: number; limit: number };
 
 function PaymentSheet({
+  buyer,
   items,
   total,
-  customers,
   onClose,
   onDone,
 }: {
+  buyer: Buyer;
   items: { product: ProductWithStock; quantity: number }[];
   total: number;
-  customers: CustomerOption[];
   onClose: () => void;
   onDone: () => void;
 }) {
+  const isGuest = buyer === "guest";
   const [step, setStep] = useState<Step>("method");
-  const [method, setMethod] = useState<PaymentMethod>("qris");
-  const [customer, setCustomer] = useState<CustomerOption | null>(null);
-  const [query, setQuery] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>(isGuest ? "qris" : "deposit");
   const [pin, setPin] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -281,18 +332,12 @@ function PaymentSheet({
 
   const payload = items.map((i) => ({ product_id: i.product.id, quantity: i.quantity }));
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = q ? customers.filter((c) => c.full_name.toLowerCase().includes(q)) : customers;
-    return list.slice(0, 60);
-  }, [customers, query]);
-
   async function verifyPin(nextPin: string) {
-    if (!customer) return;
+    if (isGuest) return;
     setPending(true);
     setError(null);
 
-    const result = await authorizePayment(customer.id, nextPin);
+    const result = await authorizePayment(buyer.id, nextPin);
     setPending(false);
     setPin("");
 
@@ -311,9 +356,9 @@ function PaymentSheet({
     setError(null);
 
     const result = await submitCheckout({
-      customerId: payMethod === "deposit" || payMethod === "debt" ? customer?.id ?? null : null,
+      customerId: !isGuest ? buyer.id : null,
       method: payMethod,
-      authToken: payMethod === "deposit" || payMethod === "debt" ? authToken : null,
+      authToken: !isGuest ? authToken : null,
       items: payload,
     });
 
@@ -328,12 +373,6 @@ function PaymentSheet({
     setStep("done");
   }
 
-  const startAccountFlow = (m: PaymentMethod) => {
-    setMethod(m);
-    setError(null);
-    setStep("pick");
-  };
-
   const shortfall = balance ? balance.deposit - total : 0;
   const remainingLimit = balance ? balance.limit - balance.debt : 0;
 
@@ -344,14 +383,13 @@ function PaymentSheet({
           <span className="flex h-20 w-20 items-center justify-center rounded-full bg-leaf-soft">
             <CheckCircle2 size={44} className="text-leaf" />
           </span>
-          <h2 className="mt-2 font-display text-xl font-semibold text-ink">Terima kasih!</h2>
-          <p className="text-sm text-ink-soft">Transaksi kamu sudah tercatat.</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-ink">Transaksi Selesai</h2>
           <div className="mt-3 w-full rounded-2xl bg-cream px-4 py-3 text-left">
             <Row label="No. Nota" value={invoice} mono />
             <Row label="Total" value={formatRupiah(total)} strong />
           </div>
           <Button size="lg" block onClick={onDone} className="mt-3">
-            Selesai
+            Transaksi Berikutnya
           </Button>
         </div>
       ) : (
@@ -363,7 +401,7 @@ function PaymentSheet({
                 onClick={() => {
                   setError(null);
                   setPin("");
-                  setStep(step === "confirm" ? "pin" : step === "pin" ? "pick" : "method");
+                  setStep(step === "confirm" ? "pin" : "method");
                 }}
                 className="-ml-1.5 flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition hover:bg-cream"
               >
@@ -372,9 +410,7 @@ function PaymentSheet({
             )}
             <div className="flex-1">
               <h2 className="font-display text-base font-semibold text-ink">
-                {step === "method" && "Pilih Pembayaran"}
-                {step === "qris" && "QRIS / Tunai"}
-                {step === "pick" && "Pilih Nama Warga"}
+                {step === "method" && "Pembayaran"}
                 {step === "pin" && "Masukkan PIN"}
                 {step === "confirm" && "Konfirmasi"}
               </h2>
@@ -392,42 +428,17 @@ function PaymentSheet({
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-5">
-            {step === "method" && (
-              <div className="flex flex-col gap-2.5">
-                <MethodOption
-                  icon={<QrCode size={21} />}
-                  title="QRIS / Tunai"
-                  desc="Scan QRIS toko atau bayar tunai ke petugas"
-                  onClick={() => {
-                    setMethod("qris");
-                    setStep("qris");
-                  }}
-                />
-                <MethodOption
-                  icon={<Wallet size={21} />}
-                  title="Potong Saldo Deposit"
-                  desc="Pakai saldo yang sudah di-top up"
-                  onClick={() => startAccountFlow("deposit")}
-                />
-                <MethodOption
-                  icon={<NotebookPen size={21} />}
-                  title="Ambil Dulu (Kasbon)"
-                  desc="Dicatat sebagai tagihan, dibayar nanti"
-                  onClick={() => startAccountFlow("debt")}
-                />
-              </div>
-            )}
-
-            {step === "qris" && (
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex h-48 w-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-cream text-ink-faint">
-                  <QrCode size={40} />
-                  <span className="text-[12px] font-medium">QRIS Toko Martinez</span>
+            {step === "method" && isGuest && (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col items-center gap-3 py-2 text-center">
+                  <div className="flex h-40 w-40 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-cream text-ink-faint">
+                    <QrCode size={36} />
+                    <span className="text-[12px] font-medium">QRIS Toko Martinez</span>
+                  </div>
+                  <p className="max-w-xs text-center text-[13px] leading-relaxed text-ink-soft">
+                    Scan QRIS di atas, atau terima uang tunai, lalu konfirmasi.
+                  </p>
                 </div>
-                <p className="max-w-xs text-center text-[13px] leading-relaxed text-ink-soft">
-                  Scan QRIS di atas, atau serahkan uang tunai ke petugas, lalu tekan tombol
-                  konfirmasi sesuai cara bayarmu.
-                </p>
                 {error && <Alert>{error}</Alert>}
                 <div className="flex w-full gap-2.5">
                   <Button
@@ -447,54 +458,34 @@ function PaymentSheet({
               </div>
             )}
 
-            {step === "pick" && (
-              <div className="flex flex-col gap-3">
-                <div className="relative">
-                  <Search
-                    size={17}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                  />
-                  <Input
-                    autoFocus
-                    placeholder="Cari nama warga..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {filtered.length === 0 ? (
-                  <EmptyState title="Nama tidak ditemukan" description="Coba kata kunci lain." />
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {filtered.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setCustomer(c);
-                          setPin("");
-                          setError(null);
-                          setStep("pin");
-                        }}
-                        className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3 text-left transition hover:border-coral/40 hover:bg-coral-soft"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream-deep text-[13px] font-bold text-ink-soft">
-                          {c.full_name.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="text-sm font-semibold text-ink">{c.full_name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+            {step === "method" && !isGuest && (
+              <div className="flex flex-col gap-2.5">
+                <MethodOption
+                  icon={<Wallet size={21} />}
+                  title="Potong Saldo Deposit"
+                  desc="Pakai saldo yang sudah di-top up"
+                  onClick={() => {
+                    setMethod("deposit");
+                    setStep("pin");
+                  }}
+                />
+                <MethodOption
+                  icon={<NotebookPen size={21} />}
+                  title="Ambil Dulu (Kasbon)"
+                  desc="Dicatat sebagai tagihan, dibayar nanti"
+                  onClick={() => {
+                    setMethod("debt");
+                    setStep("pin");
+                  }}
+                />
               </div>
             )}
 
-            {step === "pin" && customer && (
+            {step === "pin" && !isGuest && (
               <div className="flex flex-col items-center">
                 <Badge tone="neutral" className="mb-4">
                   <Lock size={11} />
-                  {customer.full_name}
+                  {buyer.full_name}
                 </Badge>
 
                 {error && (
@@ -521,16 +512,8 @@ function PaymentSheet({
               </div>
             )}
 
-            {step === "confirm" && customer && balance && (
+            {step === "confirm" && !isGuest && balance && (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3 rounded-2xl bg-coral-soft px-4 py-3">
-                  <BadgeCheck size={20} className="text-coral" />
-                  <div>
-                    <p className="text-[13px] font-semibold text-ink">{customer.full_name}</p>
-                    <p className="text-[12px] text-ink-soft">PIN terverifikasi</p>
-                  </div>
-                </div>
-
                 <div className="rounded-2xl bg-cream px-4 py-3">
                   {method === "deposit" ? (
                     <>
@@ -556,8 +539,7 @@ function PaymentSheet({
 
                 {method === "deposit" && shortfall < 0 && (
                   <Alert>
-                    Saldo kurang {formatRupiah(Math.abs(shortfall))}. Top up dulu ke petugas atau
-                    pilih metode lain.
+                    Saldo kurang {formatRupiah(Math.abs(shortfall))}. Top up dulu atau pilih Kasbon.
                   </Alert>
                 )}
                 {method === "debt" && balance.debt + total > balance.limit && (

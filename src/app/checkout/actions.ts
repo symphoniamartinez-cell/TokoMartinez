@@ -2,7 +2,45 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { PaymentMethod } from "@/lib/types";
+import { getToken, requireStaff } from "@/lib/auth";
+import type { CustomerOption, PaymentMethod } from "@/lib/types";
+
+export type AddCustomerResult =
+  | { ok: true; customer: CustomerOption }
+  | { ok: false; message: string };
+
+export async function addCustomer(input: {
+  fullName: string;
+  phone: string;
+  pin: string;
+  debtLimit: number;
+}): Promise<AddCustomerResult> {
+  await requireStaff();
+
+  if (!input.fullName.trim()) return { ok: false, message: "Nama wajib diisi." };
+  if (input.pin && !/^\d{4}$/.test(input.pin)) {
+    return { ok: false, message: "PIN harus 4 angka." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("staff_add_customer", {
+    p_token: await getToken(),
+    p_full_name: input.fullName,
+    p_phone: input.phone || null,
+    p_pin: input.pin || null,
+    p_debt_limit: input.debtLimit,
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  const row = data?.[0];
+  if (!row) return { ok: false, message: "Gagal membuat akun." };
+
+  revalidatePath("/checkout");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/saldo");
+  return { ok: true, customer: { id: row.id as string, full_name: row.full_name as string } };
+}
 
 export type AuthorizeResult =
   | { ok: true; token: string; deposit: number; debt: number; limit: number }
