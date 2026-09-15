@@ -6,9 +6,14 @@ import ProductsClient from "./products-client";
 export const revalidate = 0;
 
 export default async function ProductsPage() {
-  await requireRole(["admin", "superadmin"]);
+  const session = await requireRole(["admin", "superadmin"]);
   const supabase = await createClient();
   const { data } = await supabase.rpc("admin_list_products", { p_token: await getToken() });
 
-  return <ProductsClient products={(data ?? []) as AdminProduct[]} />;
+  return (
+    <ProductsClient
+      products={(data ?? []) as AdminProduct[]}
+      isSuperAdmin={session.role === "superadmin"}
+    />
+  );
 }

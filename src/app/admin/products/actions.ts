@@ -45,6 +45,29 @@ export async function saveProduct(input: {
   return { ok: true };
 }
 
+export async function resetAllStock(): Promise<{
+  ok: boolean;
+  message?: string;
+  count?: number;
+}> {
+  await requireRole(["superadmin"]);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_reset_all_stock", {
+    p_token: await getToken(),
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/restock");
+  revalidatePath("/admin/stock-opname");
+  revalidatePath("/admin/rekonsiliasi");
+  revalidatePath("/admin");
+  revalidatePath("/checkout");
+  return { ok: true, count: Number(data ?? 0) };
+}
+
 export async function deleteProduct(id: string): Promise<{ ok: boolean; message?: string }> {
   await requireRole(["admin", "superadmin"]);
 

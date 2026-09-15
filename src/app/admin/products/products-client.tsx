@@ -8,7 +8,9 @@ import {
   Package,
   Plus,
   Refrigerator,
+  RotateCcw,
   Search,
+  ShieldAlert,
   Trash2,
   Warehouse,
   X,
@@ -29,12 +31,18 @@ import {
 import { CATEGORIES, CATEGORY_KEYS, categoryOf } from "@/lib/categories";
 import { formatRupiah } from "@/lib/format";
 import type { AdminProduct } from "@/lib/types";
-import { deleteProduct, saveProduct } from "./actions";
+import { deleteProduct, resetAllStock, saveProduct } from "./actions";
 
 const BULK_UNITS = ["dus", "karton", "krat", "galon", "pack", "sak"];
 const RETAIL_UNITS = ["botol", "kaleng", "cup", "galon", "pcs", "sachet"];
 
-export default function ProductsClient({ products }: { products: AdminProduct[] }) {
+export default function ProductsClient({
+  products,
+  isSuperAdmin,
+}: {
+  products: AdminProduct[];
+  isSuperAdmin: boolean;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<AdminProduct | "new" | null>(null);
@@ -146,6 +154,16 @@ export default function ProductsClient({ products }: { products: AdminProduct[] 
         </div>
       </Card>
 
+      {isSuperAdmin && (
+        <DangerZone
+          productCount={products.length}
+          onSuccess={(msg) => {
+            setSuccess(msg);
+            router.refresh();
+          }}
+        />
+      )}
+
       {editing && (
         <ProductSheet
           product={editing === "new" ? null : editing}
@@ -158,6 +176,106 @@ export default function ProductsClient({ products }: { products: AdminProduct[] 
         />
       )}
     </div>
+  );
+}
+
+const RESET_PHRASE = "RESET STOK";
+
+function DangerZone({
+  productCount,
+  onSuccess,
+}: {
+  productCount: number;
+  onSuccess: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleReset() {
+    setError(null);
+    setPending(true);
+
+    const result = await resetAllStock();
+
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.message ?? "Gagal mereset stok.");
+      return;
+    }
+
+    setOpen(false);
+    setConfirmText("");
+    onSuccess(`Stok ${result.count ?? 0} produk direset ke 0.`);
+  }
+
+  return (
+    <Card className="border-danger/30">
+      <CardHeader
+        title="Zona Berbahaya"
+        description="Hanya untuk super admin. Tindakan di sini tidak bisa dibatalkan."
+        icon={<ShieldAlert size={17} />}
+      />
+      <div className="p-5">
+        {!open ? (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[13.5px] font-semibold text-ink">Reset Semua Stok</p>
+              <p className="mt-0.5 text-[12px] text-ink-soft">
+                Stok gudang & kulkas semua produk ({productCount}) diatur ulang ke 0. Harga dan
+                data produk tidak berubah.
+              </p>
+            </div>
+            <Button variant="danger" size="sm" onClick={() => setOpen(true)} className="shrink-0">
+              <RotateCcw size={15} />
+              Reset
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <Alert>
+              Ini akan mengatur stok gudang <b>dan</b> kulkas semua {productCount} produk menjadi 0.
+              Riwayat transaksi/nota/opname tidak terhapus, tapi angka stok saat ini hilang dan
+              harus dihitung ulang dari fisik.
+            </Alert>
+            <Field label={`Ketik "${RESET_PHRASE}" untuk konfirmasi`}>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder={RESET_PHRASE}
+                autoFocus
+              />
+            </Field>
+            {error && <Alert>{error}</Alert>}
+            <div className="flex gap-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                block
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmText("");
+                  setError(null);
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                block
+                disabled={pending || confirmText !== RESET_PHRASE}
+                onClick={handleReset}
+              >
+                {pending ? <Loader2 size={15} className="animate-spin" /> : "Reset Sekarang"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

@@ -60,8 +60,12 @@ atau lewat menu *Pengguna* (super admin).
 | `/admin/rekonsiliasi` | Rekonsiliasi kas harian (tunai/QRIS vs fisik) + analisis barang keluar fisik vs tercatat terjual |
 | `/admin/saldo` | Top up deposit & pelunasan kasbon warga (tunai/QRIS) |
 | `/admin/laporan` | Laporan laba rugi sederhana: omzet, HPP, laba kotor, kerugian selisih stok, per produk *(admin)* |
-| `/admin/products` | Master produk, satuan, rasio konversi, harga *(admin)* |
-| `/admin/users` | Kelola akun, peran, PIN, kata sandi *(super admin)* |
+| `/admin/products` | Master produk, satuan, rasio konversi, harga, hapus produk *(admin)*; **Zona Berbahaya** — reset semua stok ke 0 *(super admin)* |
+| `/admin/users` | Kelola akun, peran, PIN, kata sandi, hapus akun *(super admin)* |
+
+Hapus produk/akun **ditolak otomatis** kalau sudah punya riwayat transaksi/mutasi (sarankan
+nonaktifkan saja) — supaya data historis tidak pernah rusak lewat klik yang salah. Reset stok di
+Zona Berbahaya perlu mengetik ulang frasa konfirmasi, bukan cuma klik.
 
 ## Catatan Keamanan
 
