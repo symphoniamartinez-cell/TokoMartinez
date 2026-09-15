@@ -13,25 +13,42 @@ async function revalidateStock() {
   revalidatePath("/checkout");
 }
 
-export async function receiveStock(input: {
+export type NotaItemInput = {
   productId: string;
   bulkQuantity: number;
-  totalCost: number;
+  unitPrice: number;
+  discountAmount: number;
+};
+
+export async function createPurchaseInvoice(input: {
+  supplierName: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  discountAmount: number;
   notes: string;
+  items: NotaItemInput[];
 }): Promise<Result> {
   await requireStaff();
   const supabase = await createClient();
 
-  const { error } = await supabase.rpc("receive_stock", {
+  const { error } = await supabase.rpc("create_purchase_invoice", {
     p_token: await getToken(),
-    p_product_id: input.productId,
-    p_bulk_quantity: input.bulkQuantity,
-    p_total_cost: input.totalCost,
+    p_supplier_name: input.supplierName || null,
+    p_invoice_number: input.invoiceNumber || null,
+    p_invoice_date: input.invoiceDate,
     p_notes: input.notes || null,
+    p_discount_amount: input.discountAmount,
+    p_items: input.items.map((i) => ({
+      product_id: i.productId,
+      bulk_quantity: i.bulkQuantity,
+      unit_price: i.unitPrice,
+      discount_amount: i.discountAmount,
+    })),
   });
 
   if (error) return { ok: false, message: error.message };
   await revalidateStock();
+  revalidatePath("/admin/laporan");
   return { ok: true };
 }
 

@@ -55,9 +55,11 @@ atau lewat menu *Pengguna* (super admin).
 | `/checkout` | Kiosk petugas: pilih/daftarkan warga (atau tandai Tamu/Umum) → pilih barang → bayar (Saldo/Kasbon untuk warga, QRIS/Tunai untuk tamu) |
 | `/login` | Login petugas — juga jadi tujuan redirect `/` bila belum login |
 | `/admin` | Dashboard: omzet, laba kotor, selisih stok, nilai persediaan |
-| `/admin/restock` | Terima barang ke gudang & mutasi gudang → kulkas |
+| `/admin/restock` | **Nota Pembelian** (multi-item, diskon per-item & per-nota, HPP rata-rata tertimbang otomatis) & mutasi gudang → kulkas |
 | `/admin/stock-opname` | Audit fisik pagi/malam + perhitungan kerugian |
-| `/admin/saldo` | Top up deposit & pelunasan kasbon warga |
+| `/admin/rekonsiliasi` | Rekonsiliasi kas harian (tunai/QRIS vs fisik) + analisis barang keluar fisik vs tercatat terjual |
+| `/admin/saldo` | Top up deposit & pelunasan kasbon warga (tunai/QRIS) |
+| `/admin/laporan` | Laporan laba rugi sederhana: omzet, HPP, laba kotor, kerugian selisih stok, per produk *(admin)* |
 | `/admin/products` | Master produk, satuan, rasio konversi, harga *(admin)* |
 | `/admin/users` | Kelola akun, peran, PIN, kata sandi *(super admin)* |
 
@@ -72,6 +74,22 @@ atau lewat menu *Pengguna* (super admin).
 - Login dan PIN dikunci sementara 15 menit setelah 5 percobaan gagal.
 - Pembayaran pakai saldo/kasbon butuh token otorisasi sekali pakai (berlaku 3 menit) yang hanya
   terbit setelah PIN benar.
+
+## Catatan Akuntansi
+
+- **HPP pakai metode rata-rata tertimbang (moving average)**, bukan FIFO/LIFO. Tiap nota
+  pembelian masuk, `cost_price` produk dihitung ulang: `(nilai stok lama + nilai pembelian baru)
+  / (unit lama + unit baru)`, mencakup stok di gudang maupun kulkas.
+- **Laba Rugi** (`/admin/laporan`) murni dari barang dagangan (Omzet − HPP − Kerugian Selisih
+  Stok). Belum memasukkan biaya operasional (listrik, sewa, gaji) karena sistem tidak
+  mencatatnya — disebut eksplisit di halaman itu supaya tidak disalahartikan sebagai laba
+  bersih sesungguhnya.
+- **Rekonsiliasi Kas** (`/admin/rekonsiliasi`) membandingkan uang yang *seharusnya* masuk
+  (penjualan tunai/QRIS + top up + pelunasan kasbon, dipecah per metode bayar) dengan hasil
+  hitung fisik laci kas.
+- **Analisis Barang Keluar** di halaman yang sama membandingkan `Stok Pagi + Masuk − Stok Malam`
+  (yang secara fisik hilang dari kulkas) dengan jumlah yang tercatat terjual di transaksi hari
+  itu — perlu Stock Opname Pagi **dan** Malam di tanggal yang sama supaya muncul.
 
 ## Variabel Lingkungan
 

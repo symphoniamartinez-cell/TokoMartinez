@@ -9,7 +9,9 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  Scale,
   Store,
+  TrendingUp,
   UserCog,
   Wallet,
 } from "lucide-react";
@@ -26,7 +28,9 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/restock", label: "Stok Masuk", icon: ArrowLeftRight },
   { href: "/admin/stock-opname", label: "Stock Opname", icon: ClipboardCheck },
+  { href: "/admin/rekonsiliasi", label: "Rekonsiliasi", icon: Scale },
   { href: "/admin/saldo", label: "Saldo & Kasbon", icon: Wallet },
+  { href: "/admin/laporan", label: "Laba Rugi", icon: TrendingUp, roles: ["admin", "superadmin"] },
   { href: "/admin/products", label: "Produk", icon: Package, roles: ["admin", "superadmin"] },
   { href: "/admin/users", label: "Pengguna", icon: UserCog, roles: ["superadmin"] },
 ];

@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Banknote,
   CheckCircle2,
   HandCoins,
   Loader2,
   NotebookPen,
+  QrCode,
   Search,
   Wallet,
   X,
@@ -154,6 +156,7 @@ function AdjustSheet({
 }) {
   const [type, setType] = useState<"topup_deposit" | "pay_debt">("topup_deposit");
   const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris">("cash");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +172,7 @@ function AdjustSheet({
       customerId: customer.id,
       type,
       amount: value,
+      paymentMethod,
       notes,
     });
 
@@ -237,6 +241,23 @@ function AdjustSheet({
             sizing="lg"
             className="text-center"
           />
+        </Field>
+
+        <Field label="Diterima Lewat">
+          <div className="flex gap-2.5">
+            <TypeButton
+              active={paymentMethod === "cash"}
+              onClick={() => setPaymentMethod("cash")}
+              icon={<Banknote size={17} />}
+              label="Tunai"
+            />
+            <TypeButton
+              active={paymentMethod === "qris"}
+              onClick={() => setPaymentMethod("qris")}
+              icon={<QrCode size={17} />}
+              label="QRIS"
+            />
+          </div>
         </Field>
 
         <div className="flex flex-wrap gap-2">

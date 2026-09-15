@@ -8,6 +8,7 @@ export async function adjustBalance(input: {
   customerId: string;
   type: "topup_deposit" | "pay_debt";
   amount: number;
+  paymentMethod: "cash" | "qris";
   notes: string;
 }): Promise<{ ok: boolean; message?: string }> {
   await requireStaff();
@@ -23,11 +24,13 @@ export async function adjustBalance(input: {
     p_type: input.type,
     p_amount: input.amount,
     p_notes: input.notes || null,
+    p_payment_method: input.paymentMethod,
   });
 
   if (error) return { ok: false, message: error.message };
 
   revalidatePath("/admin/saldo");
   revalidatePath("/admin");
+  revalidatePath("/admin/rekonsiliasi");
   return { ok: true };
 }

@@ -8,9 +8,9 @@ import {
   Loader2,
   Minus,
   Plus,
+  Receipt,
   Refrigerator,
   Search,
-  Truck,
   Warehouse,
 } from "lucide-react";
 import {
@@ -26,9 +26,9 @@ import {
   cx,
 } from "@/components/ui";
 import { categoryOf } from "@/lib/categories";
-import { formatRupiah } from "@/lib/format";
 import type { AdminProduct } from "@/lib/types";
-import { receiveStock, transferToShowcase } from "./actions";
+import { transferToShowcase } from "./actions";
+import NotaForm from "./nota-form";
 
 type Mode = "receive" | "transfer";
 
@@ -38,7 +38,6 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
   const [selected, setSelected] = useState<AdminProduct | null>(null);
   const [query, setQuery] = useState("");
   const [qty, setQty] = useState(1);
-  const [cost, setCost] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +50,6 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
   const reset = () => {
     setSelected(null);
     setQty(1);
-    setCost("");
     setNotes("");
     setError(null);
   };
@@ -67,15 +65,7 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
     setError(null);
     setPending(true);
 
-    const result =
-      mode === "receive"
-        ? await receiveStock({
-            productId: selected.id,
-            bulkQuantity: qty,
-            totalCost: cost ? Number(cost) : 0,
-            notes,
-          })
-        : await transferToShowcase({ productId: selected.id, bulkQuantity: qty, notes });
+    const result = await transferToShowcase({ productId: selected.id, bulkQuantity: qty, notes });
 
     setPending(false);
 
@@ -85,16 +75,14 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
     }
 
     setSuccess(
-      mode === "receive"
-        ? `${qty} ${selected.bulk_unit} ${selected.name} masuk ke gudang.`
-        : `${qty * selected.conversion_ratio} ${selected.retail_unit} ${selected.name} masuk ke kulkas.`
+      `${qty * selected.conversion_ratio} ${selected.retail_unit} ${selected.name} masuk ke kulkas.`
     );
     reset();
     router.refresh();
   }
 
-  const maxQty = mode === "transfer" ? selected?.warehouse_stock ?? 0 : 999;
-  const overStock = mode === "transfer" && selected ? qty > selected.warehouse_stock : false;
+  const maxQty = selected?.warehouse_stock ?? 0;
+  const overStock = selected ? qty > selected.warehouse_stock : false;
 
   return (
     <div className="flex flex-col gap-5">
@@ -109,9 +97,9 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
         <ModeCard
           active={mode === "receive"}
           onClick={() => switchMode("receive")}
-          icon={<Truck size={19} />}
-          title="Terima ke Gudang"
-          desc="Barang baru dibeli dari supplier"
+          icon={<Receipt size={19} />}
+          title="Nota Pembelian"
+          desc="Input nota supplier, banyak produk sekaligus"
         />
         <ModeCard
           active={mode === "transfer"}
@@ -122,131 +110,117 @@ export default function RestockClient({ products }: { products: AdminProduct[] }
         />
       </div>
 
-      {success && (
-        <div className="flex items-center gap-2.5 rounded-xl bg-leaf-soft px-4 py-3 text-[13px] font-semibold text-leaf">
-          <CheckCircle2 size={17} />
-          {success}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader
-          title={mode === "receive" ? "Pilih Produk yang Diterima" : "Pilih Produk untuk Dipindah"}
-          description={
-            mode === "receive"
-              ? "Stok gudang akan bertambah sesuai satuan besar."
-              : "Stok gudang berkurang, stok kulkas bertambah otomatis sesuai rasio konversi."
-          }
-          icon={mode === "receive" ? <Warehouse size={17} /> : <Refrigerator size={17} />}
-        />
-
-        <div className="p-5">
-          {selected ? (
-            <div className="flex flex-col gap-4">
-              <SelectedProduct product={selected} onClear={reset} />
-
-              <Field label={`Jumlah (${selected.bulk_unit})`}>
-                <div className="flex items-center gap-3">
-                  <Stepper
-                    value={qty}
-                    onChange={setQty}
-                    min={1}
-                    max={maxQty > 0 ? maxQty : 999}
-                    decIcon={<Minus size={16} />}
-                    incIcon={<Plus size={16} />}
-                  />
-                  <div className="flex items-center gap-2 text-[13px] text-ink-soft">
-                    <ArrowRight size={14} />
-                    <span className="font-semibold text-ink">
-                      {qty * selected.conversion_ratio} {selected.retail_unit}
-                    </span>
-                    <span>{mode === "receive" ? "total eceran" : "ke kulkas"}</span>
-                  </div>
-                </div>
-              </Field>
-
-              {mode === "receive" && (
-                <Field
-                  label="Total Harga Beli (opsional)"
-                  hint="Kalau diisi, harga modal per eceran ikut diperbarui otomatis."
-                >
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    placeholder="mis. 96000"
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value)}
-                  />
-                  {cost && Number(cost) > 0 && (
-                    <span className="mt-1.5 block text-[12px] text-ink-faint">
-                      Modal baru:{" "}
-                      <b className="text-ink">
-                        {formatRupiah(Number(cost) / (qty * selected.conversion_ratio))}
-                      </b>{" "}
-                      per {selected.retail_unit}
-                    </span>
-                  )}
-                </Field>
-              )}
-
-              <Field label="Catatan (opsional)">
-                <Input
-                  placeholder={mode === "receive" ? "mis. beli di grosir A" : "mis. isi pagi"}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </Field>
-
-              {overStock && <Alert>Jumlah melebihi stok gudang ({selected.warehouse_stock}).</Alert>}
-              {error && <Alert>{error}</Alert>}
-
-              <Button size="lg" block disabled={pending || overStock} onClick={handleSubmit}>
-                {pending ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : mode === "receive" ? (
-                  "Simpan ke Gudang"
-                ) : (
-                  "Pindahkan ke Kulkas"
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <Search
-                  size={17}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                />
-                <Input
-                  placeholder="Cari produk..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {list.length === 0 ? (
-                <EmptyState title="Produk tidak ditemukan" />
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {list.map((p) => (
-                    <ProductRow
-                      key={p.id}
-                      product={p}
-                      disabled={mode === "transfer" && p.warehouse_stock <= 0}
-                      onClick={() => {
-                        setSelected(p);
-                        setQty(1);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+      {mode === "receive" ? (
+        <Card>
+          <CardHeader
+            title="Input Nota Pembelian"
+            description="Stok gudang bertambah dan HPP rata-rata tiap produk otomatis dihitung ulang."
+            icon={<Receipt size={17} />}
+          />
+          <div className="p-5">
+            <NotaForm products={products} />
+          </div>
+        </Card>
+      ) : (
+        <>
+          {success && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-leaf-soft px-4 py-3 text-[13px] font-semibold text-leaf">
+              <CheckCircle2 size={17} />
+              {success}
             </div>
           )}
-        </div>
-      </Card>
+
+          <Card>
+            <CardHeader
+              title="Pilih Produk untuk Dipindah"
+              description="Stok gudang berkurang, stok kulkas bertambah otomatis sesuai rasio konversi."
+              icon={<Refrigerator size={17} />}
+            />
+
+            <div className="p-5">
+              {selected ? (
+                <div className="flex flex-col gap-4">
+                  <SelectedProduct product={selected} onClear={reset} />
+
+                  <Field label={`Jumlah (${selected.bulk_unit})`}>
+                    <div className="flex items-center gap-3">
+                      <Stepper
+                        value={qty}
+                        onChange={setQty}
+                        min={1}
+                        max={maxQty > 0 ? maxQty : 999}
+                        decIcon={<Minus size={16} />}
+                        incIcon={<Plus size={16} />}
+                      />
+                      <div className="flex items-center gap-2 text-[13px] text-ink-soft">
+                        <ArrowRight size={14} />
+                        <span className="font-semibold text-ink">
+                          {qty * selected.conversion_ratio} {selected.retail_unit}
+                        </span>
+                        <span>ke kulkas</span>
+                      </div>
+                    </div>
+                  </Field>
+
+                  <Field label="Catatan (opsional)">
+                    <Input
+                      placeholder="mis. isi pagi"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </Field>
+
+                  {overStock && (
+                    <Alert>Jumlah melebihi stok gudang ({selected.warehouse_stock}).</Alert>
+                  )}
+                  {error && <Alert>{error}</Alert>}
+
+                  <Button size="lg" block disabled={pending || overStock} onClick={handleSubmit}>
+                    {pending ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      "Pindahkan ke Kulkas"
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="relative">
+                    <Search
+                      size={17}
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+                    />
+                    <Input
+                      placeholder="Cari produk..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {list.length === 0 ? (
+                    <EmptyState title="Produk tidak ditemukan" />
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {list.map((p) => (
+                        <ProductRow
+                          key={p.id}
+                          product={p}
+                          disabled={p.warehouse_stock <= 0}
+                          onClick={() => {
+                            setSelected(p);
+                            setQty(1);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
