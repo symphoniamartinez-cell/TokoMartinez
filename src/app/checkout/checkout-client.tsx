@@ -10,9 +10,11 @@ import {
   Loader2,
   Lock,
   LogOut,
+  MessageCircle,
   Minus,
   NotebookPen,
   Plus,
+  Printer,
   QrCode,
   ShoppingBasket,
   Snowflake,
@@ -37,6 +39,7 @@ import type { CustomerOption, PaymentMethod, ProductWithStock } from "@/lib/type
 import { logoutAction } from "@/app/admin/actions";
 import { authorizePayment, submitCheckout } from "./actions";
 import CustomerStep from "./customer-step";
+import { methodLabel, printReceipt, whatsappReceiptUrl } from "./struk";
 
 type Props = {
   products: ProductWithStock[];
@@ -354,6 +357,7 @@ function PaymentSheet({
   async function pay(payMethod: PaymentMethod) {
     setPending(true);
     setError(null);
+    setMethod(payMethod);
 
     const result = await submitCheckout({
       customerId: !isGuest ? buyer.id : null,
@@ -388,7 +392,48 @@ function PaymentSheet({
             <Row label="No. Nota" value={invoice} mono />
             <Row label="Total" value={formatRupiah(total)} strong />
           </div>
-          <Button size="lg" block onClick={onDone} className="mt-3">
+
+          <div className="flex w-full gap-2.5">
+            <Button
+              variant="outline"
+              size="md"
+              block
+              onClick={() =>
+                printReceipt({
+                  invoice,
+                  buyerName: isGuest ? "Umum" : buyer.full_name,
+                  items,
+                  total,
+                  methodLabel: methodLabel(method),
+                })
+              }
+            >
+              <Printer size={16} />
+              Cetak
+            </Button>
+            {!isGuest && buyer.phone && (
+              <a
+                href={whatsappReceiptUrl({
+                  phone: buyer.phone,
+                  invoice,
+                  buyerName: buyer.full_name,
+                  items,
+                  total,
+                  methodLabel: methodLabel(method),
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1"
+              >
+                <Button variant="outline" size="md" block>
+                  <MessageCircle size={16} />
+                  WA
+                </Button>
+              </a>
+            )}
+          </div>
+
+          <Button size="lg" block onClick={onDone} className="mt-1">
             Transaksi Berikutnya
           </Button>
         </div>

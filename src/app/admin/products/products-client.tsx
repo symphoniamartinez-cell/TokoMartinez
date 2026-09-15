@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Download,
   Loader2,
   Package,
   Plus,
@@ -62,10 +63,18 @@ export default function ProductsClient({
             Master produk, satuan, rasio konversi, dan harga.
           </p>
         </div>
-        <Button onClick={() => setEditing("new")} className="shrink-0">
-          <Plus size={17} />
-          <span className="hidden sm:inline">Tambah</span>
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <a href="/admin/export/produk">
+            <Button variant="outline">
+              <Download size={17} />
+              <span className="hidden sm:inline">CSV</span>
+            </Button>
+          </a>
+          <Button onClick={() => setEditing("new")}>
+            <Plus size={17} />
+            <span className="hidden sm:inline">Tambah</span>
+          </Button>
+        </div>
       </div>
 
       {success && (

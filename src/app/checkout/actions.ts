@@ -39,7 +39,14 @@ export async function addCustomer(input: {
   revalidatePath("/checkout");
   revalidatePath("/admin/users");
   revalidatePath("/admin/saldo");
-  return { ok: true, customer: { id: row.id as string, full_name: row.full_name as string } };
+  return {
+    ok: true,
+    customer: {
+      id: row.id as string,
+      full_name: row.full_name as string,
+      phone: input.phone || null,
+    },
+  };
 }
 
 export type AuthorizeResult =

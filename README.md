@@ -36,17 +36,11 @@ saldo / kasbon (bisa diketik warga sendiri di layar, atau diketikkan petugas).
 | **Admin** | Semua akses petugas + kelola master produk |
 | **Super Admin** | Semua akses admin + kelola pengguna, peran, dan kredensial |
 
-### Akun awal
+### Akun
 
-Kata sandi di bawah ini **wajib diganti** lewat menu *Pengguna* setelah login pertama.
-
-| Username | Peran | Kata sandi awal |
-| --- | --- | --- |
-| `superadmin` | Super Admin | `MartinezSuper2026` |
-| `martinez` | Admin | `MartinezAdmin2026` |
-
-Akun warga didaftarkan lewat tombol **"Daftarkan Warga Baru"** langsung di kiosk (`/checkout`),
-atau lewat menu *Pengguna* (super admin).
+Akun petugas/admin/superadmin dibuat & dikelola lewat menu **Pengguna** (super admin). Akun warga
+didaftarkan lewat tombol **"Daftarkan Warga Baru"** langsung di kiosk (`/checkout`), atau juga
+lewat menu Pengguna.
 
 ## Struktur Modul
 
@@ -60,12 +54,26 @@ atau lewat menu *Pengguna* (super admin).
 | `/admin/rekonsiliasi` | Rekonsiliasi kas harian (tunai/QRIS vs fisik) + analisis barang keluar fisik vs tercatat terjual |
 | `/admin/saldo` | Top up deposit & pelunasan kasbon warga (tunai/QRIS) |
 | `/admin/laporan` | Laporan laba rugi sederhana: omzet, HPP, laba kotor, kerugian selisih stok, per produk *(admin)* |
-| `/admin/products` | Master produk, satuan, rasio konversi, harga, hapus produk *(admin)*; **Zona Berbahaya** — reset semua stok ke 0 *(super admin)* |
+| `/admin/products` | Master produk, satuan, rasio konversi, harga, hapus produk, unduh CSV *(admin)*; **Zona Berbahaya** — reset stok / reset seluruh data *(super admin)* |
 | `/admin/users` | Kelola akun, peran, PIN, kata sandi, hapus akun *(super admin)* |
+| `/admin/aktivitas` | Log aktivitas admin (siapa mengubah apa) & daftar cadangan data otomatis *(super admin)* |
 
 Hapus produk/akun **ditolak otomatis** kalau sudah punya riwayat transaksi/mutasi (sarankan
-nonaktifkan saja) — supaya data historis tidak pernah rusak lewat klik yang salah. Reset stok di
-Zona Berbahaya perlu mengetik ulang frasa konfirmasi, bukan cuma klik.
+nonaktifkan saja) — supaya data historis tidak pernah rusak lewat klik yang salah. Kedua tombol
+di Zona Berbahaya perlu mengetik ulang frasa konfirmasi berbeda, bukan cuma klik:
+
+| Tombol | Efek | Frasa konfirmasi |
+| --- | --- | --- |
+| Reset Semua Stok | Stok gudang & kulkas → 0. Harga & riwayat tidak berubah. | `RESET STOK` |
+| Reset Semua Data Transaksi | Hapus **permanen** semua transaksi/mutasi/opname/nota/ledger/rekonsiliasi, stok & saldo/kasbon → 0. Master produk & akun tidak terhapus. Otomatis membuat cadangan JSON (lihat `/admin/aktivitas` → Cadangan Data) sebelum menghapus. | `HAPUS SEMUA DATA` |
+
+Dashboard menampilkan peringatan kalau stock opname pagi/malam **hari ini** belum diisi lengkap.
+
+### Export CSV
+
+`/admin/export/transaksi`, `/admin/export/produk`, `/admin/export/laba-rugi` (terima query
+`?mulai=YYYY-MM-DD&sampai=YYYY-MM-DD` untuk dua yang pertama) — tombol unduhnya ada di halaman
+Produk dan Laporan.
 
 ## Catatan Keamanan
 
@@ -105,8 +113,29 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 Lokal ada di `.env.local` (tidak di-commit). Di Vercel, isi lewat **Project Settings → Environment
 Variables** agar build dari GitHub ikut membawanya.
 
+## Struk Digital
+
+Setelah transaksi selesai di kiosk, tombol **Cetak** membuka struk siap-print (format nota kasir)
+di tab baru. Kalau warga (bukan tamu) punya nomor WhatsApp tersimpan, tombol **WA** juga muncul —
+membuka `wa.me` dengan ringkasan belanja sudah terisi otomatis.
+
 ## PWA & Android (TWA)
 
-Manifest di `public/manifest.json`, ikon di `public/icons/`. Untuk membungkus jadi APK lewat
-Bubblewrap, ikuti bagian 8.2 PRD dan isi `sha256_cert_fingerprints` di
-`public/.well-known/assetlinks.json` (masih placeholder).
+Manifest di `public/manifest.json`, ikon & logo asli di `public/icons/` dan
+`public/logo-martinez-*.png`. Belum dibungkus jadi APK — butuh dijalankan langsung di komputer
+kamu (perlu Java + Bubblewrap men-download Android SDK sendiri, ~1-2GB, tidak bisa dijalankan
+dari sini):
+
+```bash
+npm install -g @bubblewrap/cli
+bubblewrap init --manifest https://tokomartinez.vercel.app/manifest.json
+bubblewrap build
+```
+
+Saat `init`, Bubblewrap akan menawarkan install JDK & Android SDK otomatis kalau belum ada —
+ikuti saja promptnya. Setelah `build`, akan ada file `android.keystore` (kunci penandatanganan
+APK) — **simpan baik-baik**, dibutuhkan lagi tiap kali build ulang atau update ke Play Store.
+Ambil `sha256_cert_fingerprints`-nya (dicetak di akhir proses `build`, atau lewat
+`keytool -list -v -keystore android.keystore`) dan isi ke
+`public/.well-known/assetlinks.json` (masih placeholder), lalu deploy ulang — ini yang membuat
+APK tampil sebagai aplikasi native penuh (tanpa address bar) alih-alih terbuka di browser.

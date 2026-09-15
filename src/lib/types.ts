@@ -45,6 +45,7 @@ export type AdminProduct = {
 export type CustomerOption = {
   id: string;
   full_name: string;
+  phone: string | null;
 };
 
 export type AdminUser = {
@@ -71,6 +72,39 @@ export type SessionUser = {
 };
 
 export type PaymentMethod = "qris" | "cash" | "deposit" | "debt";
+
+export type OpnameStatusRow = {
+  tanggal: string;
+  ada_pagi: boolean;
+  ada_malam: boolean;
+};
+
+export type ActivityLogRow = {
+  id: string;
+  actor_name: string;
+  action: string;
+  target_type: string | null;
+  target_label: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type BackupRow = {
+  id: string;
+  reason: string;
+  created_by_name: string;
+  row_counts: Record<string, number>;
+  created_at: string;
+};
+
+export type TransactionExportRow = {
+  invoice_number: string;
+  tanggal: string;
+  nama_warga: string;
+  metode_bayar: string;
+  total: number;
+  jumlah_item: number;
+};
 
 export type CashReconciliation = {
   cash_sales: number;

@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   ArrowLeftRight,
   ClipboardCheck,
+  History,
   LayoutDashboard,
   LogOut,
   Package,
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
   { href: "/admin/laporan", label: "Laba Rugi", icon: TrendingUp, roles: ["admin", "superadmin"] },
   { href: "/admin/products", label: "Produk", icon: Package, roles: ["admin", "superadmin"] },
   { href: "/admin/users", label: "Pengguna", icon: UserCog, roles: ["superadmin"] },
+  { href: "/admin/aktivitas", label: "Aktivitas", icon: History, roles: ["superadmin"] },
 ];
 
 export default function AdminShell({

@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import {
   Coins,
+  Download,
   Layers,
   Receipt,
   Scale,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { Card, CardHeader, EmptyState, Field, Input, cx } from "@/components/ui";
+import { Button, Card, CardHeader, EmptyState, Field, Input, cx } from "@/components/ui";
 import { formatRupiah } from "@/lib/format";
 import type { ProfitLoss, ProfitLossByProduct } from "@/lib/types";
 
@@ -58,6 +59,18 @@ export default function LaporanClient({
               className="w-40"
             />
           </Field>
+          <a href={`/admin/export/transaksi?mulai=${start}&sampai=${end}`}>
+            <Button variant="outline" size="md">
+              <Download size={16} />
+              <span className="hidden sm:inline">Transaksi</span>
+            </Button>
+          </a>
+          <a href={`/admin/export/laba-rugi?mulai=${start}&sampai=${end}`}>
+            <Button variant="outline" size="md">
+              <Download size={16} />
+              <span className="hidden sm:inline">Per Produk</span>
+            </Button>
+          </a>
         </div>
       </div>
 

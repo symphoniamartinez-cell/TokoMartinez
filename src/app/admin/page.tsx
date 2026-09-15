@@ -2,10 +2,13 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeftRight,
+  CircleAlert,
   ClipboardCheck,
   Coins,
+  Moon,
   PackageSearch,
   Receipt,
+  Sun,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -15,7 +18,7 @@ import { getToken, requireStaff } from "@/lib/auth";
 import { formatRupiah } from "@/lib/format";
 import { Badge, Card, CardHeader, EmptyState, cx } from "@/components/ui";
 import { categoryOf } from "@/lib/categories";
-import type { AdminProduct } from "@/lib/types";
+import type { AdminProduct, OpnameStatusRow } from "@/lib/types";
 
 export const revalidate = 0;
 
@@ -31,16 +34,21 @@ export default async function AdminDashboard() {
   const token = await getToken();
   const supabase = await createClient();
 
-  const [{ data: statsRows }, { data: recent }, { data: products }] = await Promise.all([
-    supabase.rpc("admin_dashboard", { p_token: token }),
-    supabase.rpc("admin_recent_transactions", { p_token: token, p_limit: 6 }),
-    supabase.rpc("admin_list_products", { p_token: token }),
-  ]);
+  const [{ data: statsRows }, { data: recent }, { data: products }, { data: opname }] =
+    await Promise.all([
+      supabase.rpc("admin_dashboard", { p_token: token }),
+      supabase.rpc("admin_recent_transactions", { p_token: token, p_limit: 6 }),
+      supabase.rpc("admin_list_products", { p_token: token }),
+      supabase.rpc("admin_opname_status", { p_token: token, p_days: 7 }),
+    ]);
 
   const stats = statsRows?.[0];
   const lowStock = ((products ?? []) as AdminProduct[])
     .filter((p) => p.is_active && p.showcase_stock < p.min_showcase_threshold)
     .slice(0, 6);
+  const opnameDays = (opname ?? []) as OpnameStatusRow[];
+  const today = opnameDays[0];
+  const missingRecent = opnameDays.filter((d) => !d.ada_pagi || !d.ada_malam).length;
 
   const firstName = session.full_name.split(" ")[0];
 
@@ -52,6 +60,31 @@ export default async function AdminDashboard() {
           Ringkasan operasional Toko Martinez hari ini.
         </p>
       </div>
+
+      {today && (!today.ada_pagi || !today.ada_malam) && (
+        <Link
+          href="/admin/stock-opname"
+          className="flex items-center gap-3 rounded-2xl border border-gold/40 bg-gold-soft px-4 py-3.5 transition hover:brightness-95"
+        >
+          <CircleAlert size={19} className="shrink-0 text-gold-dark" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13.5px] font-semibold text-gold-dark">
+              Stock opname hari ini belum lengkap
+            </p>
+            <p className="mt-0.5 flex items-center gap-3 text-[12px] text-gold-dark/80">
+              <span className="flex items-center gap-1">
+                <Sun size={12} /> Pagi {today.ada_pagi ? "✓ sudah" : "belum diisi"}
+              </span>
+              <span className="flex items-center gap-1">
+                <Moon size={12} /> Malam {today.ada_malam ? "✓ sudah" : "belum diisi"}
+              </span>
+            </p>
+          </div>
+          {missingRecent > 1 && (
+            <Badge tone="gold">{missingRecent} hari bolong (7 hari terakhir)</Badge>
+          )}
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat
