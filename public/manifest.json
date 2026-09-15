@@ -1,23 +1,30 @@
 {
-  "name": "Toko Martinez Self-Service",
-  "short_name": "TokoMartinez",
-  "description": "Aplikasi Kasir Mandiri & Kulkas Toko Martinez",
+  "name": "Toko Martinez at Symphonia",
+  "short_name": "Toko Martinez",
+  "description": "Kasir mandiri & manajemen stok Toko Martinez at Symphonia",
   "start_url": "/checkout",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0284c7",
+  "background_color": "#faf6f1",
+  "theme_color": "#e2645b",
   "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

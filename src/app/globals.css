@@ -1,26 +1,93 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Palet diambil dari logo Martinez at Symphonia */
+  --color-cream: #faf6f1;
+  --color-cream-deep: #f3ebe1;
+  --color-surface: #ffffff;
+  --color-line: #ebe0d4;
+  --color-line-strong: #ddcdba;
+
+  --color-ink: #3b302b;
+  --color-ink-soft: #8a7a6e;
+  --color-ink-faint: #b3a396;
+
+  --color-coral: #e2645b;
+  --color-coral-dark: #c74b43;
+  --color-coral-soft: #fdece9;
+
+  --color-gold: #d3a244;
+  --color-gold-dark: #b0842f;
+  --color-gold-soft: #fbf1dc;
+
+  --color-leaf: #5d8a5f;
+  --color-leaf-soft: #eaf2ea;
+
+  --color-danger: #c0433a;
+  --color-danger-soft: #fceae8;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl2: 1.125rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Latar dekoratif lembut ala kelopak logo */
+.petal-bg {
+  background-image:
+    radial-gradient(circle at 12% -8%, rgba(226, 100, 91, 0.1), transparent 42%),
+    radial-gradient(circle at 92% 4%, rgba(211, 162, 68, 0.12), transparent 38%);
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.22s ease-out both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-sheet {
+  animation: sheet-up 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
 }

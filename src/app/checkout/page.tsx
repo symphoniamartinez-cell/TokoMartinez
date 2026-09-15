@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ProductWithStock, Customer } from "@/lib/types";
+import type { CustomerOption, ProductWithStock } from "@/lib/types";
 import CheckoutClient from "./checkout-client";
 
 export const revalidate = 0;
@@ -12,18 +12,15 @@ export default async function CheckoutPage() {
       .from("products")
       .select("*, inventory(*)")
       .eq("is_active", true)
+      .order("category")
       .order("name"),
-    supabase
-      .from("customer_directory")
-      .select("*")
-      .eq("role", "customer")
-      .order("full_name"),
+    supabase.from("customer_directory").select("*").order("full_name"),
   ]);
 
   return (
     <CheckoutClient
       products={(products ?? []) as ProductWithStock[]}
-      customers={(customers ?? []) as Customer[]}
+      customers={(customers ?? []) as CustomerOption[]}
     />
   );
 }

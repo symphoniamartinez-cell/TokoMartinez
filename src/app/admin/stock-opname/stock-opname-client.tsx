@@ -1,189 +1,244 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, CheckCircle2, Sun, Moon } from "lucide-react";
-import type { ProductWithStock, Customer } from "@/lib/types";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, ClipboardCheck, Loader2, Moon, Sun } from "lucide-react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Input,
+  cx,
+} from "@/components/ui";
+import { categoryOf } from "@/lib/categories";
 import { formatRupiah } from "@/lib/format";
+import type { AdminProduct } from "@/lib/types";
 import { submitStockAudit } from "./actions";
+
+type Session = "morning" | "night";
 
 export default function StockOpnameClient({
   products,
-  staff,
+  defaultSession,
 }: {
-  products: ProductWithStock[];
-  staff: Customer[];
+  products: AdminProduct[];
+  defaultSession: Session;
 }) {
-  const [session, setSession] = useState<"morning" | "night">("morning");
-  const [physical, setPhysical] = useState<Record<string, number | "">>({});
-  const [staffId, setStaffId] = useState("");
-  const [pin, setPin] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
+  const [session, setSession] = useState<Session>(defaultSession);
+  const [physical, setPhysical] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<number | null>(null);
 
-  function setValue(productId: string, value: string) {
-    setPhysical((prev) => ({
-      ...prev,
-      [productId]: value === "" ? "" : Math.max(0, Number(value)),
-    }));
-  }
+  const filled = useMemo(
+    () =>
+      products
+        .filter((p) => physical[p.id] !== undefined && physical[p.id] !== "")
+        .map((p) => ({
+          product: p,
+          value: Number(physical[p.id]),
+          diff: Number(physical[p.id]) - p.showcase_stock,
+        })),
+    [products, physical]
+  );
 
-  function statusFor(product: ProductWithStock) {
-    const systemStock = product.inventory?.showcase_stock ?? 0;
-    const val = physical[product.id];
-    if (val === "" || val === undefined) return { color: "bg-slate-100 text-slate-400", label: "-" };
-    const diff = val - systemStock;
-    if (diff === 0) return { color: "bg-emerald-100 text-emerald-700", label: "Aman" };
-    if (diff < 0) return { color: "bg-red-100 text-red-700", label: `${diff}` };
-    return { color: "bg-amber-100 text-amber-700", label: `+${diff}` };
-  }
-
-  const estimatedLoss = products.reduce((sum, p) => {
-    const systemStock = p.inventory?.showcase_stock ?? 0;
-    const val = physical[p.id];
-    if (val === "" || val === undefined) return sum;
-    const diff = val - systemStock;
-    return diff < 0 ? sum + Math.abs(diff) * p.cost_price : sum;
-  }, 0);
+  const estimatedLoss = filled.reduce(
+    (sum, f) => (f.diff < 0 ? sum + Math.abs(f.diff) * f.product.cost_price : sum),
+    0
+  );
+  const shortageCount = filled.filter((f) => f.diff < 0).length;
+  const surplusCount = filled.filter((f) => f.diff > 0).length;
 
   async function handleSubmit() {
     setError(null);
-    const audits = products
-      .filter((p) => physical[p.id] !== "" && physical[p.id] !== undefined)
-      .map((p) => ({ product_id: p.id, physical_stock: Number(physical[p.id]) }));
+    setPending(true);
 
-    if (audits.length === 0) {
-      setError("Isi minimal satu stok fisik.");
-      return;
-    }
-    if (!staffId || pin.length !== 4) {
-      setError("Pilih petugas dan masukkan PIN 4 digit.");
-      return;
-    }
+    const result = await submitStockAudit({
+      session,
+      audits: filled.map((f) => ({ product_id: f.product.id, physical_stock: f.value })),
+    });
 
-    setSubmitting(true);
-    const result = await submitStockAudit({ session, staffId, pin, audits });
-    setSubmitting(false);
+    setPending(false);
 
-    if (!result.success) {
-      setError(result.error);
+    if (!result.ok) {
+      setError(result.message ?? "Gagal menyimpan audit.");
       return;
     }
 
-    setDone(true);
+    setDone(result.loss ?? 0);
     setPhysical({});
-    setPin("");
-    setTimeout(() => setDone(false), 2500);
+    router.refresh();
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
-      <div className="flex rounded-xl bg-slate-100 p-1 text-sm font-semibold">
-        <button
-          onClick={() => setSession("morning")}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 ${
-            session === "morning" ? "bg-white text-sky-700 shadow" : "text-slate-500"
-          }`}
-        >
-          <Sun size={15} /> Pagi
-        </button>
-        <button
-          onClick={() => setSession("night")}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 ${
-            session === "night" ? "bg-white text-sky-700 shadow" : "text-slate-500"
-          }`}
-        >
-          <Moon size={15} /> Malam
-        </button>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs text-slate-500">
-            <tr>
-              <th className="p-3">Produk</th>
-              <th className="p-3 text-center">Sistem</th>
-              <th className="p-3 text-center">Fisik</th>
-              <th className="p-3 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => {
-              const status = statusFor(p);
-              return (
-                <tr key={p.id} className="border-t border-slate-100">
-                  <td className="p-3 font-medium text-slate-700">{p.name}</td>
-                  <td className="p-3 text-center text-slate-500">
-                    {p.inventory?.showcase_stock ?? 0}
-                  </td>
-                  <td className="p-3 text-center">
-                    <input
-                      type="number"
-                      min={0}
-                      value={physical[p.id] ?? ""}
-                      onChange={(e) => setValue(p.id, e.target.value)}
-                      className="w-16 rounded-lg border border-slate-200 p-1 text-center"
-                    />
-                  </td>
-                  <td className="p-3 text-center">
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status.color}`}>
-                      {status.label}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {estimatedLoss > 0 && (
-        <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          Estimasi kerugian: <b>{formatRupiah(estimatedLoss)}</b>
+    <div className="flex flex-col gap-5">
+      <div>
+        <h1 className="font-display text-2xl font-semibold text-ink">Stock Opname</h1>
+        <p className="mt-1 text-sm text-ink-soft">
+          Hitung fisik isi kulkas, lalu sistem mencatat selisih dan menyesuaikan stok.
         </p>
+      </div>
+
+      <div className="flex rounded-2xl border border-line bg-surface p-1.5">
+        <SessionTab active={session === "morning"} onClick={() => setSession("morning")}>
+          <Sun size={16} />
+          Sesi Pagi
+        </SessionTab>
+        <SessionTab active={session === "night"} onClick={() => setSession("night")}>
+          <Moon size={16} />
+          Sesi Malam
+        </SessionTab>
+      </div>
+
+      {done !== null && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-leaf-soft px-4 py-3 text-[13px] text-leaf">
+          <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
+          <span>
+            <b>Audit tersimpan.</b> Stok kulkas sudah disesuaikan.{" "}
+            {done > 0 ? `Tercatat kerugian ${formatRupiah(done)}.` : "Tidak ada kerugian."}
+          </span>
+        </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <select
-          value={staffId}
-          onChange={(e) => setStaffId(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 p-3 text-sm"
-        >
-          <option value="">Pilih petugas...</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.full_name}
-            </option>
-          ))}
-        </select>
-        <input
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          placeholder="PIN 4 digit"
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-          className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-center text-lg tracking-[0.5em]"
+      <Card>
+        <CardHeader
+          title="Hitung Stok Fisik"
+          description="Kosongkan bila produk tidak dihitung pada sesi ini."
+          icon={<ClipboardCheck size={17} />}
         />
-      </div>
 
-      {error && <p className="text-center text-xs text-red-600">{error}</p>}
+        <ul className="divide-y divide-line">
+          {products.map((p) => {
+            const raw = physical[p.id] ?? "";
+            const diff = raw === "" ? null : Number(raw) - p.showcase_stock;
+            const meta = categoryOf(p.category);
 
-      <button
-        disabled={submitting}
+            return (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                <span
+                  className={cx("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", meta.chip)}
+                >
+                  <meta.icon size={18} />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-semibold text-ink">{p.name}</p>
+                  <p className="text-[11.5px] text-ink-faint">
+                    Sistem: {p.showcase_stock} {p.retail_unit}
+                  </p>
+                </div>
+
+                <div className="w-[72px] shrink-0">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    placeholder="—"
+                    value={raw}
+                    onChange={(e) =>
+                      setPhysical((prev) => ({ ...prev, [p.id]: e.target.value }))
+                    }
+                    className="px-2 text-center font-semibold"
+                  />
+                </div>
+
+                <div className="w-14 shrink-0 text-right">
+                  {diff === null ? (
+                    <span className="text-[12px] text-ink-faint">—</span>
+                  ) : diff === 0 ? (
+                    <Badge tone="leaf">Aman</Badge>
+                  ) : diff < 0 ? (
+                    <Badge tone="danger">{diff}</Badge>
+                  ) : (
+                    <Badge tone="gold">+{diff}</Badge>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
+      {filled.length > 0 && (
+        <Card className="p-5">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <Summary label="Dihitung" value={String(filled.length)} />
+            <Summary label="Kurang" value={String(shortageCount)} tone="danger" />
+            <Summary label="Lebih" value={String(surplusCount)} tone="gold" />
+          </div>
+          {estimatedLoss > 0 && (
+            <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">
+              Estimasi kerugian: <b>{formatRupiah(estimatedLoss)}</b>
+            </p>
+          )}
+        </Card>
+      )}
+
+      {error && <Alert>{error}</Alert>}
+
+      <Button
+        size="lg"
+        variant="ink"
+        block
+        disabled={pending || filled.length === 0}
         onClick={handleSubmit}
-        className="rounded-xl bg-slate-800 py-3 text-sm font-bold text-white active:scale-95 disabled:opacity-50"
       >
-        {submitting ? (
-          <Loader2 className="mx-auto animate-spin" size={18} />
-        ) : done ? (
-          <span className="flex items-center justify-center gap-1">
-            <CheckCircle2 size={16} /> Stok Disesuaikan
-          </span>
+        {pending ? (
+          <Loader2 size={18} className="animate-spin" />
         ) : (
-          "Submit & Sesuaikan Stok"
+          `Submit & Sesuaikan Stok (${filled.length})`
         )}
-      </button>
+      </Button>
+    </div>
+  );
+}
+
+function SessionTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cx(
+        "flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition",
+        active ? "bg-coral text-white shadow-sm shadow-coral/25" : "text-ink-soft hover:bg-cream"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Summary({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "danger" | "gold";
+}) {
+  return (
+    <div>
+      <p
+        className={cx(
+          "font-display text-xl font-semibold",
+          tone === "danger" ? "text-danger" : tone === "gold" ? "text-gold-dark" : "text-ink"
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-0.5 text-[12px] text-ink-soft">{label}</p>
     </div>
   );
 }
