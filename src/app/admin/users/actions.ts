@@ -40,6 +40,23 @@ export async function saveUser(input: {
   return { ok: true };
 }
 
+export async function deleteUser(userId: string): Promise<{ ok: boolean; message?: string }> {
+  await requireRole(["superadmin"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_user", {
+    p_token: await getToken(),
+    p_user_id: userId,
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/saldo");
+  revalidatePath("/checkout");
+  return { ok: true };
+}
+
 export async function unlockUser(userId: string): Promise<{ ok: boolean; message?: string }> {
   await requireRole(["superadmin"]);
 
