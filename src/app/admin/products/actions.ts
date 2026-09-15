@@ -68,6 +68,32 @@ export async function resetAllStock(): Promise<{
   return { ok: true, count: Number(data ?? 0) };
 }
 
+export async function resetAllData(): Promise<{
+  ok: boolean;
+  message?: string;
+  summary?: Record<string, number>;
+}> {
+  await requireRole(["superadmin"]);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_full_data_reset", {
+    p_token: await getToken(),
+  });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/restock");
+  revalidatePath("/admin/stock-opname");
+  revalidatePath("/admin/rekonsiliasi");
+  revalidatePath("/admin/saldo");
+  revalidatePath("/admin/laporan");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+  revalidatePath("/checkout");
+  return { ok: true, summary: (data ?? {}) as Record<string, number> };
+}
+
 export async function deleteProduct(id: string): Promise<{ ok: boolean; message?: string }> {
   await requireRole(["admin", "superadmin"]);
 

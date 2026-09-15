@@ -1,31 +1,24 @@
-const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
-
-const OUTER_PETAL =
-  "M50 6 C54.5 15 57 23 57 29 C57 35.5 54 40 50 40 C46 40 43 35.5 43 29 C43 23 45.5 15 50 6 Z";
-const INNER_PETAL =
-  "M50 24 C52.5 29 54 33 54 36.5 C54 39.8 52.3 41.5 50 41.5 C47.7 41.5 46 39.8 46 36.5 C46 33 47.5 29 50 24 Z";
-
-/** Motif bunga Martinez at Symphonia. */
+/** Motif bunga Martinez at Symphonia (logo resmi, di-crop dari lockup asli). */
 export function MartinezMark({ className = "h-9 w-9" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 100 100" className={className} role="img" aria-label="Martinez at Symphonia">
-      <g fill="var(--color-coral)">
-        {ANGLES.map((a) => (
-          <path key={`o${a}`} d={OUTER_PETAL} transform={`rotate(${a} 50 50)`} />
-        ))}
-      </g>
-      <g fill="var(--color-coral)" opacity="0.55">
-        {ANGLES.map((a) => (
-          <path key={`i${a}`} d={INNER_PETAL} transform={`rotate(${a + 22.5} 50 50)`} />
-        ))}
-      </g>
-      <g fill="var(--color-gold)">
-        {ANGLES.map((a) => (
-          <circle key={`d${a}`} cx="50" cy="18" r="3" transform={`rotate(${a + 22.5} 50 50)`} />
-        ))}
-      </g>
-      <circle cx="50" cy="50" r="7.5" fill="var(--color-coral)" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/logo-martinez-mark.png"
+      alt="Martinez at Symphonia"
+      className={`object-contain ${className}`}
+    />
+  );
+}
+
+/** Lockup lengkap (motif + wordmark) dari file logo asli. */
+export function MartinezLogoFull({ className = "h-24" }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/logo-martinez-full.png"
+      alt="Martinez at Symphonia"
+      className={`object-contain ${className}`}
+    />
   );
 }
 

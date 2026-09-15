@@ -31,7 +31,7 @@ import {
 import { CATEGORIES, CATEGORY_KEYS, categoryOf } from "@/lib/categories";
 import { formatRupiah } from "@/lib/format";
 import type { AdminProduct } from "@/lib/types";
-import { deleteProduct, resetAllStock, saveProduct } from "./actions";
+import { deleteProduct, resetAllData, resetAllStock, saveProduct } from "./actions";
 
 const BULK_UNITS = ["dus", "karton", "krat", "galon", "pack", "sak"];
 const RETAIL_UNITS = ["botol", "kaleng", "cup", "galon", "pcs", "sachet"];
@@ -181,6 +181,8 @@ export default function ProductsClient({
 
 const RESET_PHRASE = "RESET STOK";
 
+const FULL_RESET_PHRASE = "HAPUS SEMUA DATA";
+
 function DangerZone({
   productCount,
   onSuccess,
@@ -188,29 +190,6 @@ function DangerZone({
   productCount: number;
   onSuccess: (message: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleReset() {
-    setError(null);
-    setPending(true);
-
-    const result = await resetAllStock();
-
-    setPending(false);
-
-    if (!result.ok) {
-      setError(result.message ?? "Gagal mereset stok.");
-      return;
-    }
-
-    setOpen(false);
-    setConfirmText("");
-    onSuccess(`Stok ${result.count ?? 0} produk direset ke 0.`);
-  }
-
   return (
     <Card className="border-danger/30">
       <CardHeader
@@ -218,64 +197,160 @@ function DangerZone({
         description="Hanya untuk super admin. Tindakan di sini tidak bisa dibatalkan."
         icon={<ShieldAlert size={17} />}
       />
-      <div className="p-5">
-        {!open ? (
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[13.5px] font-semibold text-ink">Reset Semua Stok</p>
-              <p className="mt-0.5 text-[12px] text-ink-soft">
-                Stok gudang & kulkas semua produk ({productCount}) diatur ulang ke 0. Harga dan
-                data produk tidak berubah.
-              </p>
-            </div>
-            <Button variant="danger" size="sm" onClick={() => setOpen(true)} className="shrink-0">
-              <RotateCcw size={15} />
-              Reset
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <Alert>
-              Ini akan mengatur stok gudang <b>dan</b> kulkas semua {productCount} produk menjadi 0.
-              Riwayat transaksi/nota/opname tidak terhapus, tapi angka stok saat ini hilang dan
-              harus dihitung ulang dari fisik.
-            </Alert>
-            <Field label={`Ketik "${RESET_PHRASE}" untuk konfirmasi`}>
-              <Input
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                placeholder={RESET_PHRASE}
-                autoFocus
-              />
-            </Field>
-            {error && <Alert>{error}</Alert>}
-            <div className="flex gap-2.5">
-              <Button
-                variant="outline"
-                size="sm"
-                block
-                onClick={() => {
-                  setOpen(false);
-                  setConfirmText("");
-                  setError(null);
-                }}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                block
-                disabled={pending || confirmText !== RESET_PHRASE}
-                onClick={handleReset}
-              >
-                {pending ? <Loader2 size={15} className="animate-spin" /> : "Reset Sekarang"}
-              </Button>
-            </div>
-          </div>
-        )}
+      <div className="divide-y divide-line">
+        <div className="p-5">
+          <DangerAction
+            title="Reset Semua Stok"
+            description={`Stok gudang & kulkas semua produk (${productCount}) diatur ulang ke 0. Harga dan data produk tidak berubah.`}
+            warning={
+              <>
+                Ini akan mengatur stok gudang <b>dan</b> kulkas semua {productCount} produk
+                menjadi 0. Riwayat transaksi/nota/opname tidak terhapus, tapi angka stok saat ini
+                hilang dan harus dihitung ulang dari fisik.
+              </>
+            }
+            confirmPhrase={RESET_PHRASE}
+            buttonLabel="Reset"
+            confirmLabel="Reset Sekarang"
+            onConfirm={async () => {
+              const result = await resetAllStock();
+              if (!result.ok) {
+                return { ok: false, message: result.message ?? "Gagal mereset stok." };
+              }
+              return { ok: true, message: `Stok ${result.count ?? 0} produk direset ke 0.` };
+            }}
+            onSuccess={onSuccess}
+          />
+        </div>
+
+        <div className="p-5">
+          <DangerAction
+            title="Reset Semua Data Transaksi"
+            description="Menghapus PERMANEN seluruh riwayat transaksi, mutasi stok, opname, nota pembelian, saldo/kasbon, dan rekonsiliasi kas. Stok & saldo warga ikut kembali ke 0."
+            warning={
+              <>
+                Ini menghapus <b>seluruh riwayat operasional</b> — transaksi, mutasi stok,
+                stock opname, nota pembelian, ledger saldo/kasbon, rekonsiliasi kas — dan
+                menolkan semua stok serta saldo/kasbon warga. Master produk (nama/harga) dan
+                akun pengguna (nama/username/peran) <b>tidak</b> ikut terhapus. Tidak bisa
+                dibatalkan setelah dijalankan.
+              </>
+            }
+            confirmPhrase={FULL_RESET_PHRASE}
+            buttonLabel="Hapus Semua"
+            confirmLabel="Hapus Permanen"
+            onConfirm={async () => {
+              const result = await resetAllData();
+              if (!result.ok) {
+                return { ok: false, message: result.message ?? "Gagal mereset data." };
+              }
+              const s = result.summary ?? {};
+              return {
+                ok: true,
+                message: `Data direset: ${s.transactions ?? 0} transaksi, ${s.stock_transfers ?? 0} mutasi, ${s.stock_audits ?? 0} opname, ${s.purchase_invoices ?? 0} nota, ${s.balance_ledgers ?? 0} ledger, ${s.cash_reconciliations ?? 0} rekonsiliasi dihapus.`,
+              };
+            }}
+            onSuccess={onSuccess}
+          />
+        </div>
       </div>
     </Card>
+  );
+}
+
+function DangerAction({
+  title,
+  description,
+  warning,
+  confirmPhrase,
+  buttonLabel,
+  confirmLabel,
+  onConfirm,
+  onSuccess,
+}: {
+  title: string;
+  description: string;
+  warning: React.ReactNode;
+  confirmPhrase: string;
+  buttonLabel: string;
+  confirmLabel: string;
+  onConfirm: () => Promise<{ ok: boolean; message: string }>;
+  onSuccess: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setError(null);
+    setPending(true);
+
+    const result = await onConfirm();
+
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    setOpen(false);
+    setConfirmText("");
+    onSuccess(result.message);
+  }
+
+  if (!open) {
+    return (
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[13.5px] font-semibold text-ink">{title}</p>
+          <p className="mt-0.5 text-[12px] text-ink-soft">{description}</p>
+        </div>
+        <Button variant="danger" size="sm" onClick={() => setOpen(true)} className="shrink-0">
+          <RotateCcw size={15} />
+          {buttonLabel}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Alert>{warning}</Alert>
+      <Field label={`Ketik "${confirmPhrase}" untuk konfirmasi`}>
+        <Input
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          placeholder={confirmPhrase}
+          autoFocus
+        />
+      </Field>
+      {error && <Alert>{error}</Alert>}
+      <div className="flex gap-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          block
+          onClick={() => {
+            setOpen(false);
+            setConfirmText("");
+            setError(null);
+          }}
+        >
+          Batal
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          block
+          disabled={pending || confirmText !== confirmPhrase}
+          onClick={handleConfirm}
+        >
+          {pending ? <Loader2 size={15} className="animate-spin" /> : confirmLabel}
+        </Button>
+      </div>
+    </div>
   );
 }
 
