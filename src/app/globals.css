@@ -34,12 +34,37 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: light; /* app is light-only; stops native form controls (select, date) rendering dark on OS dark mode */
+  -webkit-tap-highlight-color: transparent; /* kill the gray/blue flash on tap -- the loudest "this is a website" tell */
+  overscroll-behavior: none; /* this is an app shell, not a document; no page-level pull-to-refresh/rubber-band */
 }
 
 body {
+  min-height: 100dvh; /* not min-h-full: 100% height on a touch device tracks the LARGEST viewport (URL bar collapsed) */
   background-color: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* iOS Safari zooms the page on focus if an input's font is under 16px, and never zooms back out.
+   Keep desktop's smaller text-sm; force 16px only where the primary input is touch. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Every tappable control: no double-tap-zoom delay, no accidental text selection or
+   long-press callout on labels. Never on body copy -- only on things you press. */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Latar dekoratif lembut ala kelopak logo */

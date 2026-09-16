@@ -211,7 +211,7 @@ export function Sheet({
       />
       <div
         className={cx(
-          "animate-sheet relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-surface shadow-2xl sm:rounded-3xl",
+          "animate-sheet relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-surface shadow-2xl sm:rounded-3xl",
           maxWidth
         )}
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}

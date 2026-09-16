@@ -98,7 +98,10 @@ export default function AdminShell({
       </aside>
 
       {/* Header (mobile) */}
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
+      <header
+        className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur lg:hidden"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2.5">
             <MartinezMark className="h-8 w-8" />

@@ -89,7 +89,10 @@ export default function CheckoutClient({ products, customers: initialCustomers, 
 
   return (
     <div className="flex flex-1 flex-col pb-32">
-      <header className="petal-bg sticky top-0 z-20 border-b border-line bg-cream/95 backdrop-blur">
+      <header
+        className="petal-bg sticky top-0 z-20 border-b border-line bg-cream/95 backdrop-blur"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3.5">
           <div className="flex items-center gap-3">
             <MartinezMark className="h-10 w-10" />
@@ -472,7 +475,7 @@ function PaymentSheet({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">
             {step === "method" && isGuest && (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col items-center gap-3 py-2 text-center">

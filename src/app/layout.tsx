@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#e2645b",
   viewportFit: "cover",
+  interactiveWidget: "resizes-content", // Android: shrink layout when the keyboard opens, matching iOS
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${jakarta.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-dvh flex-col">{children}</body>
     </html>
   );
 }

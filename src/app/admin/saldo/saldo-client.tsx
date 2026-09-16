@@ -212,7 +212,7 @@ function AdjustSheet({
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 overflow-y-auto px-5 py-5">
+      <div className="flex flex-col gap-4 overflow-y-auto overscroll-contain px-5 py-5">
         <div className="flex gap-2.5">
           <TypeButton
             active={type === "topup_deposit"}

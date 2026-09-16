@@ -458,7 +458,7 @@ function ProductSheet({
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 overflow-y-auto px-5 py-5">
+      <div className="flex flex-col gap-4 overflow-y-auto overscroll-contain px-5 py-5">
         <Field label="Nama Produk">
           <Input
             autoFocus={!product}
